@@ -1,0 +1,100 @@
+name: Integration Task
+description: Task for integrating or updating a service
+title: "[Integration]: "
+labels: ["type:integration", "agent:claude"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Create a task for service integration work.
+        These tasks can be picked up by agents.
+
+  - type: dropdown
+    id: service
+    attributes:
+      label: Service
+      description: Which service is this for?
+      options:
+        - Cloudflare
+        - Salesforce
+        - GitHub
+        - Vercel
+        - Digital Ocean
+        - Claude
+        - Termius
+        - Raspberry Pi
+        - iSH
+        - Shellfish
+        - Working Copy
+        - Pyto
+        - New Service
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task Type
+      description: What type of integration work?
+      options:
+        - New Integration - Set up new service
+        - Enhancement - Improve existing integration
+        - Bug Fix - Fix integration issue
+        - Authentication - Auth setup or rotation
+        - Webhook - Webhook handler setup
+        - State Sync - State synchronization
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task Description
+      description: What needs to be done?
+    validations:
+      required: true
+
+  - type: textarea
+    id: endpoints
+    attributes:
+      label: Endpoints Required
+      description: List of API endpoints to integrate
+      placeholder: |
+        - GET /users
+        - POST /items
+        - PUT /items/{id}
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this is done?
+      placeholder: |
+        - [ ] Endpoint configured in endpoints.yaml
+        - [ ] Client module created
+        - [ ] Tests pass
+        - [ ] Documentation updated
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: agent_assignable
+    attributes:
+      label: Agent Assignment
+      options:
+        - label: This task can be automatically assigned to Claude agent
+          required: false

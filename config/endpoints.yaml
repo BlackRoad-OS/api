@@ -1,0 +1,223 @@
+# =============================================================================
+# BlackRoad API Endpoints Configuration
+# =============================================================================
+# This file defines all service endpoints for the kanban integration system.
+# Agents should reference this file for API connectivity.
+# =============================================================================
+
+version: "1.0.0"
+last_updated: "2026-01-27"
+
+# -----------------------------------------------------------------------------
+# Cloud Services
+# -----------------------------------------------------------------------------
+cloud:
+  cloudflare:
+    name: "Cloudflare"
+    base_url: "https://api.cloudflare.com/client/v4"
+    auth_type: "bearer"
+    env_key: "CLOUDFLARE_API_TOKEN"
+    endpoints:
+      zones: "/zones"
+      dns: "/zones/{zone_id}/dns_records"
+      kv: "/accounts/{account_id}/storage/kv/namespaces"
+      workers: "/accounts/{account_id}/workers/scripts"
+      d1: "/accounts/{account_id}/d1/database"
+    state_storage: true
+    docs: "https://developers.cloudflare.com/api"
+
+  vercel:
+    name: "Vercel"
+    base_url: "https://api.vercel.com"
+    auth_type: "bearer"
+    env_key: "VERCEL_TOKEN"
+    endpoints:
+      projects: "/v9/projects"
+      deployments: "/v6/deployments"
+      domains: "/v5/domains"
+      env: "/v10/projects/{projectId}/env"
+    docs: "https://vercel.com/docs/rest-api"
+
+  digitalocean:
+    name: "Digital Ocean"
+    base_url: "https://api.digitalocean.com/v2"
+    auth_type: "bearer"
+    env_key: "DIGITALOCEAN_TOKEN"
+    endpoints:
+      droplets: "/droplets"
+      databases: "/databases"
+      apps: "/apps"
+      kubernetes: "/kubernetes/clusters"
+      spaces: "/spaces"
+    docs: "https://docs.digitalocean.com/reference/api"
+
+# -----------------------------------------------------------------------------
+# CRM & Business
+# -----------------------------------------------------------------------------
+crm:
+  salesforce:
+    name: "Salesforce"
+    base_url: "https://{instance}.salesforce.com/services/data/v59.0"
+    auth_type: "oauth2"
+    env_keys:
+      client_id: "SF_CLIENT_ID"
+      client_secret: "SF_CLIENT_SECRET"
+      username: "SF_USERNAME"
+      password: "SF_PASSWORD"
+      security_token: "SF_SECURITY_TOKEN"
+    endpoints:
+      sobjects: "/sobjects"
+      query: "/query"
+      composite: "/composite"
+      tooling: "/tooling"
+    state_storage: true
+    docs: "https://developer.salesforce.com/docs/apis"
+
+  github_projects:
+    name: "GitHub Projects"
+    base_url: "https://api.github.com"
+    graphql_url: "https://api.github.com/graphql"
+    auth_type: "bearer"
+    env_key: "GITHUB_TOKEN"
+    endpoints:
+      repos: "/repos/{owner}/{repo}"
+      projects: "/projects"
+      issues: "/repos/{owner}/{repo}/issues"
+      pulls: "/repos/{owner}/{repo}/pulls"
+    state_storage: false
+    docs: "https://docs.github.com/en/rest"
+
+# -----------------------------------------------------------------------------
+# AI & Automation
+# -----------------------------------------------------------------------------
+ai:
+  claude:
+    name: "Claude API"
+    base_url: "https://api.anthropic.com/v1"
+    auth_type: "x-api-key"
+    env_key: "ANTHROPIC_API_KEY"
+    endpoints:
+      messages: "/messages"
+      models: "/models"
+    models:
+      - claude-opus-4-5-20251101
+      - claude-sonnet-4-20250514
+      - claude-haiku-3-5-20241022
+    docs: "https://docs.anthropic.com/en/api"
+
+# -----------------------------------------------------------------------------
+# Infrastructure & SSH
+# -----------------------------------------------------------------------------
+infrastructure:
+  termius:
+    name: "Termius"
+    description: "SSH client for team access management"
+    sync_type: "manual"
+    config_path: "~/.termius"
+    features:
+      - ssh_keys
+      - port_forwarding
+      - sftp
+      - snippets
+
+  raspberry_pi:
+    name: "Raspberry Pi Fleet"
+    description: "Edge computing nodes"
+    discovery: "mdns"
+    default_user: "pi"
+    management:
+      ansible: true
+      ssh: true
+    endpoints:
+      api: "http://{hostname}:8000/api"
+      metrics: "http://{hostname}:9090/metrics"
+
+# -----------------------------------------------------------------------------
+# Mobile Development Tools (iOS)
+# -----------------------------------------------------------------------------
+mobile:
+  ish:
+    name: "iSH Shell"
+    description: "Linux shell environment for iOS"
+    shell: "ash"
+    package_manager: "apk"
+    sync_path: "/root"
+    features:
+      - git
+      - python
+      - node
+
+  shellfish:
+    name: "Shellfish"
+    description: "iOS SSH/SFTP client"
+    protocols:
+      - ssh
+      - sftp
+      - mosh
+    sync: "icloud"
+
+  working_copy:
+    name: "Working Copy"
+    description: "iOS Git client"
+    features:
+      - git_lfs
+      - ssh_keys
+      - shortcuts_integration
+    sync: "icloud"
+    url_scheme: "working-copy://"
+
+  pyto:
+    name: "Pyto"
+    description: "Python IDE for iOS"
+    python_version: "3.11"
+    features:
+      - pip
+      - numpy
+      - pandas
+      - shortcuts_integration
+    sync: "icloud"
+
+# -----------------------------------------------------------------------------
+# Webhook Receivers
+# -----------------------------------------------------------------------------
+webhooks:
+  github:
+    path: "/webhooks/github"
+    events:
+      - push
+      - pull_request
+      - issues
+      - project_card
+    signature_header: "X-Hub-Signature-256"
+    hash_algorithm: "sha256"
+
+  cloudflare:
+    path: "/webhooks/cloudflare"
+    events:
+      - deployment
+      - alert
+    signature_header: "CF-Webhook-Auth"
+
+  salesforce:
+    path: "/webhooks/salesforce"
+    events:
+      - sobject_change
+      - platform_event
+    auth_type: "session_id"
+
+# -----------------------------------------------------------------------------
+# State Synchronization
+# -----------------------------------------------------------------------------
+state_sync:
+  primary: "cloudflare_kv"
+  secondary: "salesforce"
+  fallback: "local_sqlite"
+
+  sync_interval: 300  # seconds
+  conflict_resolution: "last_write_wins"
+
+  entities:
+    - kanban_cards
+    - project_status
+    - agent_tasks
+    - integration_state
