@@ -1,0 +1,18 @@
+# BlackRoad API Requirements
+
+# Core
+pyyaml>=6.0
+
+# HTTP (for production use)
+# requests>=2.31.0
+# httpx>=0.25.0
+
+# Type checking (optional)
+# mypy>=1.0.0
+
+# Testing (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+
+# Linting (optional)
+# ruff>=0.1.0

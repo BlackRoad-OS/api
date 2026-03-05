@@ -1,0 +1,39 @@
+# Example Task Template
+# Copy this file to create new tasks
+
+id: "task-example"
+title: "Example Task Title"
+description: |
+  Detailed description of what needs to be done.
+
+  Include:
+  - Context and background
+  - Specific requirements
+  - Any constraints or dependencies
+
+status: "pending"
+priority: "medium"
+assignee: "agent:claude"
+
+created: "2026-01-27T00:00:00Z"
+updated: "2026-01-27T00:00:00Z"
+
+labels:
+  - "type:feature"
+  - "priority:medium"
+
+acceptance_criteria:
+  - "All tests pass"
+  - "Code reviewed"
+  - "Documentation updated"
+
+linked_pr: null
+linked_issue: null
+
+metadata:
+  source: "manual"
+  created_by: "setup"
+
+# SHA-256 hash of task content (excluding this field)
+# Recompute when task is modified
+hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
