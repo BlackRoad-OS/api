@@ -1,0 +1,201 @@
+# =============================================================================
+# Pull Request Validation Workflow
+# =============================================================================
+# Prevents failed PRs by validating:
+# - Code syntax
+# - Hash integrity
+# - Integration health checks
+# - State consistency
+# =============================================================================
+
+name: PR Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  syntax-check:
+    name: Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check Python syntax
+        run: |
+          find . -name "*.py" -exec python -m py_compile {} \;
+          echo "All Python files have valid syntax"
+
+      - name: Validate YAML files
+        run: |
+          pip install pyyaml
+          python -c "
+          import yaml
+          from pathlib import Path
+
+          for yaml_file in Path('.').rglob('*.yaml'):
+              try:
+                  with open(yaml_file) as f:
+                      yaml.safe_load(f)
+                  print(f'OK: {yaml_file}')
+              except Exception as e:
+                  print(f'ERROR: {yaml_file}: {e}')
+                  exit(1)
+          "
+
+  hash-verification:
+    name: Hash Verification
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Test hashing module
+        run: |
+          python -c "
+          from hashing import sha256, sha_infinity, verify_github_webhook
+
+          # Test SHA-256
+          assert sha256('test') == '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'
+
+          # Test SHA-infinity
+          result = sha_infinity('test', rounds=100)
+          assert len(result) == 64  # SHA-256 produces 64 hex chars
+
+          print('Hashing module verified!')
+          "
+
+  integration-health:
+    name: Integration Health Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate endpoint configuration
+        run: |
+          python -c "
+          import yaml
+          from pathlib import Path
+
+          config_path = Path('config/endpoints.yaml')
+          if not config_path.exists():
+              print('ERROR: endpoints.yaml not found')
+              exit(1)
+
+          with open(config_path) as f:
+              config = yaml.safe_load(f)
+
+          required_sections = ['cloud', 'crm', 'ai']
+          for section in required_sections:
+              if section not in config:
+                  print(f'WARNING: Missing section: {section}')
+
+          # Validate each service has required fields
+          for category in ['cloud', 'crm', 'ai']:
+              if category in config:
+                  for service, service_config in config[category].items():
+                      if 'base_url' not in service_config:
+                          print(f'WARNING: {category}.{service} missing base_url')
+
+          print('Endpoint configuration validated!')
+          "
+
+  state-consistency:
+    name: State Consistency
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Check state module
+        run: |
+          python -c "
+          from state import StateManager, SyncSource
+
+          manager = StateManager()
+
+          # Test basic operations
+          state = manager.put('test:key', {'value': 123})
+          assert state.hash
+          assert state.version == 1
+
+          retrieved = manager.get('test:key')
+          assert retrieved.value == {'value': 123}
+
+          print('State management verified!')
+          "
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for secrets in code
+        run: |
+          # Check for common secret patterns
+          if grep -rE "(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][^'\"]+['\"]" --include="*.py" --include="*.yaml" .; then
+            echo "WARNING: Possible hardcoded secrets found. Please review."
+            # Don't fail, just warn - could be false positives
+          else
+            echo "No obvious hardcoded secrets found."
+          fi
+
+      - name: Verify env var usage
+        run: |
+          python -c "
+          from pathlib import Path
+
+          # Check that sensitive values come from env vars
+          issues = []
+          for py_file in Path('.').rglob('*.py'):
+              content = py_file.read_text()
+              # Check for os.environ usage with sensitive keys
+              if 'TOKEN' in content or 'SECRET' in content or 'KEY' in content:
+                  if 'os.environ' not in content and 'getenv' not in content:
+                      if 'test' not in str(py_file).lower():
+                          issues.append(str(py_file))
+
+          if issues:
+              print('Files that may have hardcoded secrets:')
+              for f in issues:
+                  print(f'  - {f}')
+          else:
+              print('All sensitive values appear to use environment variables.')
+          "

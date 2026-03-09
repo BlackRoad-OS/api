@@ -1,0 +1,202 @@
+# =============================================================================
+# BlackRoad Kanban Project Configuration
+# =============================================================================
+# Salesforce-style project management for GitHub repositories
+# State stored in CRM/Cloudflare, files in Git
+# =============================================================================
+
+version: "1.0.0"
+project_id: "blackroad-api"
+created: "2026-01-27"
+
+# -----------------------------------------------------------------------------
+# Project Metadata
+# -----------------------------------------------------------------------------
+metadata:
+  name: "BlackRoad API Integration Hub"
+  description: "Central API coordination for all BlackRoad repositories"
+  owner: "BlackRoad-OS"
+  team:
+    - role: "maintainer"
+      github: "@BlackRoad-OS"
+    - role: "agent"
+      type: "claude"
+
+# -----------------------------------------------------------------------------
+# Kanban Board Definition
+# -----------------------------------------------------------------------------
+board:
+  name: "Main Board"
+  columns:
+    - id: "backlog"
+      name: "Backlog"
+      limit: null
+      auto_assign: false
+
+    - id: "todo"
+      name: "To Do"
+      limit: 10
+      auto_assign: false
+
+    - id: "in_progress"
+      name: "In Progress"
+      limit: 5
+      auto_assign: true
+      wip_limit_action: "warn"
+
+    - id: "review"
+      name: "Review"
+      limit: 5
+      auto_assign: false
+      requires:
+        - pull_request
+        - passing_checks
+
+    - id: "done"
+      name: "Done"
+      limit: null
+      auto_archive_days: 14
+
+# -----------------------------------------------------------------------------
+# Card Templates (Salesforce-style)
+# -----------------------------------------------------------------------------
+card_templates:
+  feature:
+    fields:
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "description"
+        type: "text"
+        required: true
+      - name: "priority"
+        type: "picklist"
+        options: ["critical", "high", "medium", "low"]
+        default: "medium"
+      - name: "estimated_points"
+        type: "number"
+      - name: "assignee"
+        type: "user"
+      - name: "labels"
+        type: "multi_select"
+      - name: "linked_pr"
+        type: "reference"
+        object: "pull_request"
+      - name: "acceptance_criteria"
+        type: "checklist"
+    automations:
+      - trigger: "pr_merged"
+        action: "move_to_done"
+      - trigger: "pr_opened"
+        action: "move_to_review"
+
+  bug:
+    fields:
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "description"
+        type: "text"
+        required: true
+      - name: "severity"
+        type: "picklist"
+        options: ["blocker", "critical", "major", "minor", "trivial"]
+        required: true
+      - name: "steps_to_reproduce"
+        type: "text"
+      - name: "expected_behavior"
+        type: "text"
+      - name: "actual_behavior"
+        type: "text"
+      - name: "environment"
+        type: "object"
+    automations:
+      - trigger: "severity_blocker"
+        action: "notify_team"
+
+  integration:
+    fields:
+      - name: "title"
+        type: "string"
+        required: true
+      - name: "service"
+        type: "picklist"
+        options: ["cloudflare", "salesforce", "vercel", "digitalocean", "claude", "github", "termius", "pi"]
+      - name: "endpoint"
+        type: "string"
+      - name: "auth_status"
+        type: "picklist"
+        options: ["pending", "configured", "verified", "failed"]
+      - name: "last_verified"
+        type: "datetime"
+      - name: "hash_verification"
+        type: "string"
+        description: "SHA-256 hash of last successful response"
+
+# -----------------------------------------------------------------------------
+# Automation Rules
+# -----------------------------------------------------------------------------
+automations:
+  pr_quality_gate:
+    description: "Prevent failed PRs by validating before merge"
+    triggers:
+      - event: "pull_request.opened"
+      - event: "pull_request.synchronize"
+    conditions:
+      - type: "check_status"
+        status: "success"
+    actions:
+      - type: "add_label"
+        label: "ready-for-review"
+      - type: "update_card"
+        field: "status"
+        value: "review"
+
+  sync_to_salesforce:
+    description: "Mirror card state to Salesforce"
+    triggers:
+      - event: "card.moved"
+      - event: "card.updated"
+    actions:
+      - type: "api_call"
+        service: "salesforce"
+        endpoint: "/sobjects/Kanban_Card__c"
+        method: "PATCH"
+
+  sync_to_cloudflare:
+    description: "Store state in Cloudflare KV"
+    triggers:
+      - event: "card.created"
+      - event: "card.updated"
+      - event: "card.moved"
+    actions:
+      - type: "api_call"
+        service: "cloudflare"
+        endpoint: "/kv/namespaces/{ns}/values/{card_id}"
+        method: "PUT"
+        hash_body: true
+
+# -----------------------------------------------------------------------------
+# Labels (consistent across repos)
+# -----------------------------------------------------------------------------
+labels:
+  - name: "priority:critical"
+    color: "d73a4a"
+  - name: "priority:high"
+    color: "ff7b00"
+  - name: "priority:medium"
+    color: "fbca04"
+  - name: "priority:low"
+    color: "0e8a16"
+  - name: "type:feature"
+    color: "a2eeef"
+  - name: "type:bug"
+    color: "d73a4a"
+  - name: "type:integration"
+    color: "7057ff"
+  - name: "status:blocked"
+    color: "b60205"
+  - name: "status:needs-review"
+    color: "fbca04"
+  - name: "agent:claude"
+    color: "d4a574"
